@@ -53,7 +53,8 @@ export default function UploadForm() {
     await ff.writeFile("input", await fetchFile(file))
     await ff.exec(["-i", "input", "-vn", "-ar", "16000", "-ac", "1", "-b:a", "128k", "output.mp3"])
     const data = await ff.readFile("output.mp3") as Uint8Array
-    return new File([data], file.name.replace(/\.[^.]+$/, ".mp3"), { type: "audio/mp3" })
+    const blob = new Blob([data.buffer as ArrayBuffer], { type: "audio/mp3" })
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".mp3"), { type: "audio/mp3" })
   }
 
   async function uploadToR2(file: File): Promise<string | undefined> {
