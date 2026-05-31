@@ -11,9 +11,6 @@ image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg")
     .pip_install_from_requirements("requirements.txt")
-    .run_commands(
-        "python -c \"import whisper; whisper.load_model('base')\""
-    )
     .add_local_dir(".", remote_path="/app", ignore=IGNORE)
 )
 
