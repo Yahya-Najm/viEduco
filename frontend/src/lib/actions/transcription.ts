@@ -1,5 +1,6 @@
 "use server"
 
+import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
@@ -57,4 +58,32 @@ export async function getTranscription(id: string) {
   return prisma.transcription.findFirst({
     where: { id, userId: session.user.id },
   })
+}
+
+export async function deleteTranscription(id: string) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  const transcription = await prisma.transcription.findFirst({
+    where: { id, userId: session.user.id },
+    select: { sourceKey: true },
+  })
+  if (!transcription) throw new Error("Not found")
+
+  if (transcription.sourceKey) {
+    const apiUrl      = process.env.API_URL
+    const internalKey = process.env.INTERNAL_API_KEY
+    if (apiUrl) {
+      await fetch(
+        `${apiUrl}/storage?key=${encodeURIComponent(transcription.sourceKey)}`,
+        {
+          method:  "DELETE",
+          headers: internalKey ? { "X-Internal-Key": internalKey } : {},
+        },
+      ).catch(() => {})
+    }
+  }
+
+  await prisma.transcription.delete({ where: { id } })
+  redirect("/dashboard")
 }

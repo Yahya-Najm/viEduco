@@ -57,3 +57,7 @@ def download_bytes(key: str) -> bytes:
         Key=key,
     )
     return response["Body"].read()
+
+
+def delete_object(key: str) -> None:
+    _get_client().delete_object(Bucket=settings.cf_r2_bucket_name, Key=key)

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getTranscription } from "@/lib/actions/transcription"
+import { DeleteButton } from "@/components/DeleteButton"
 
 type Segment = { speaker: string; start_time: number; end_time: number; text: string }
 
@@ -58,6 +59,7 @@ export default async function TranscriptionPage({
             </span>
           </div>
         </div>
+        <DeleteButton id={transcription.id} />
       </div>
 
       {/* Speaker legend */}

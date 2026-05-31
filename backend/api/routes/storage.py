@@ -3,10 +3,16 @@ from datetime import datetime
 
 from fastapi import APIRouter
 
-from utils.storage import _get_client, _key
+from utils.storage import _get_client, _key, delete_object
 from core.config import settings
 
 router = APIRouter()
+
+
+@router.delete("/storage")
+async def delete_storage_object(key: str):
+    delete_object(key)
+    return {"ok": True}
 
 
 @router.get("/presigned-upload")
