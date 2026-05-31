@@ -5,14 +5,16 @@ APP_NAME = "vieduco"
 # ---------------------------------------------------------------------------
 # Container image
 # ---------------------------------------------------------------------------
+IGNORE = ["venv", "__pycache__", ".env", ".pyc", "modal_app.py", ".git"]
+
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg")
     .pip_install_from_requirements("requirements.txt")
-    # Bake Whisper model weights into the image — eliminates cold-start download
     .run_commands(
         "python -c \"import whisper; whisper.load_model('base')\""
     )
+    .add_local_dir(".", remote_path="/app", ignore=IGNORE)
 )
 
 # ---------------------------------------------------------------------------
@@ -43,16 +45,7 @@ app = modal.App(APP_NAME)
     volumes={"/root/.cache": model_cache},
     gpu="T4",
     timeout=600,
-    container_idle_timeout=300,
-    mounts=[
-        modal.Mount.from_local_dir(
-            ".",
-            remote_path="/app",
-            condition=lambda p: not any(
-                s in p for s in ["venv", "__pycache__", ".env", ".pyc", "modal_app.py"]
-            ),
-        )
-    ],
+    scaledown_window=300,
 )
 @modal.asgi_app()
 def web():
