@@ -1,13 +1,12 @@
-from pyannote.audio import Pipeline
-
 from core.config import settings
 
 _pipeline = None
 
 
-def _get_pipeline() -> Pipeline:
+def _get_pipeline():
     global _pipeline
     if _pipeline is None:
+        from pyannote.audio import Pipeline
         _pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
             token=settings.huggingface_token,
