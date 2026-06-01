@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.router import router
+from api.routes.live_transcribe import router as live_transcribe_router
 from core.config import settings
 
 app = FastAPI()
@@ -15,6 +16,7 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(live_transcribe_router)
 
 
 @app.get("/health")

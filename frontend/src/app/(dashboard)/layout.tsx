@@ -23,6 +23,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/dashboard" className="text-sm text-slate-600 hover:text-slate-900 font-medium transition-colors">
               Library
             </Link>
+            <Link href="/dashboard/live" className="text-sm text-slate-600 hover:text-slate-900 font-medium transition-colors">
+              Live
+            </Link>
             <Link href="/dashboard/upload" className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-lg font-semibold transition-colors">
               + Upload
             </Link>
