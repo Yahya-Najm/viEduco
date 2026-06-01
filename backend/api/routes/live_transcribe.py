@@ -32,17 +32,10 @@ def _validate_token(token: str) -> bool:
 
 @router.websocket("/ws/transcribe")
 async def live_transcribe(websocket: WebSocket, token: str = ""):
+    await websocket.accept()
     if not _validate_token(token):
         await websocket.close(code=4003)
         return
-
-    if settings.cors_origins and "*" not in settings.cors_origins:
-        origin = websocket.headers.get("origin", "")
-        if origin not in settings.cors_origins:
-            await websocket.close(code=4003)
-            return
-
-    await websocket.accept()
     client = AsyncOpenAI(api_key=settings.openai_api_key)
 
     try:
