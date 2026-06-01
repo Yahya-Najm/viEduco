@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { auth } from "@/lib/auth"
+import { isAdminEmail } from "@/lib/admin"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -26,6 +27,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/dashboard/live" className="text-sm text-slate-600 hover:text-slate-900 font-medium transition-colors">
               Live
             </Link>
+            {isAdminEmail(session.user.email) && (
+              <Link href="/dashboard/admin" className="text-sm text-slate-600 hover:text-slate-900 font-medium transition-colors">
+                Admin
+              </Link>
+            )}
             <Link href="/dashboard/upload" className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-lg font-semibold transition-colors">
               + Upload
             </Link>

@@ -2,10 +2,14 @@
 
 import crypto from "crypto"
 import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
 export async function getLiveToken(): Promise<{ wsUrl: string; token: string } | null> {
   const session = await auth()
-  if (!session?.user) return null
+  if (!session?.user?.id) return null
+
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { active: true } })
+  if (!user?.active) return null
 
   const key = process.env.INTERNAL_API_KEY ?? ""
   const apiUrl = process.env.API_URL ?? "http://localhost:8000"
