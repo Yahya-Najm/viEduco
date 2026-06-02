@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { auth } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
+import { LogoutButton } from "@/components/LogoutButton"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -36,6 +37,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               + Upload
             </Link>
             <span className="text-sm text-slate-400">{session.user.name ?? session.user.email}</span>
+            <LogoutButton />
           </nav>
         </div>
       </header>
