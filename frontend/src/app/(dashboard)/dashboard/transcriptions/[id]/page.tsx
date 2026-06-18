@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getTranscription } from "@/lib/actions/transcription"
 import { DeleteButton } from "@/components/DeleteButton"
+import TranscriptPlayer from "@/components/TranscriptPlayer"
 
 type Segment = { speaker: string; start_time: number; end_time: number; text: string }
 
@@ -74,36 +75,12 @@ export default async function TranscriptionPage({
         </div>
       )}
 
-      {/* Transcript segments */}
-      <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50">
-        {segments.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-slate-400 text-center">No segments found.</p>
-        ) : (
-          segments.map((seg, i) => (
-            <div key={i} className="px-5 py-4 flex gap-4 items-start hover:bg-slate-50/60 transition-colors">
-              {/* Timestamp */}
-              <span className="text-[11px] font-mono text-slate-400 pt-0.5 shrink-0 w-14">
-                {formatTime(seg.start_time)}
-              </span>
-
-              {/* Speaker dot */}
-              <div className={`w-5 h-5 rounded-full ${speakerColor[seg.speaker] ?? "bg-slate-300"} flex items-center justify-center shrink-0 mt-0.5`}>
-                <span className="text-[8px] font-bold text-white">
-                  {seg.speaker.replace("SPEAKER_", "")}
-                </span>
-              </div>
-
-              {/* Text */}
-              <p className="text-sm text-slate-700 leading-relaxed flex-1">{seg.text}</p>
-
-              {/* End time */}
-              <span className="text-[11px] font-mono text-slate-300 pt-0.5 shrink-0">
-                {formatTime(seg.end_time)}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
+      {/* Video + clickable transcript */}
+      <TranscriptPlayer
+        segments={segments}
+        speakerColor={speakerColor}
+        sourceKey={transcription.sourceType === "video" ? transcription.sourceKey : null}
+      />
     </div>
   )
 }

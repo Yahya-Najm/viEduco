@@ -28,3 +28,13 @@ async def presigned_upload(filename: str, content_type: str = "video/mp4"):
         ExpiresIn=3600,
     )
     return {"url": url, "key": key}
+
+
+@router.get("/presigned-download")
+async def presigned_download(key: str):
+    url = _get_client().generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.cf_r2_bucket_name, "Key": key},
+        ExpiresIn=3600,
+    )
+    return {"url": url}
