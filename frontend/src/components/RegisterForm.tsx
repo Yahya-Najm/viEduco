@@ -3,7 +3,7 @@
 import { useActionState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { registerAction } from "@/lib/actions/auth"
+import { registerAction, signInWithGoogleAction } from "@/lib/actions/auth"
 
 export default function RegisterForm() {
   const [error, formAction, pending] = useActionState(registerAction, null)
@@ -115,6 +115,27 @@ export default function RegisterForm() {
                 <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
               )}
               {pending ? "Creating account…" : "Create account"}
+            </button>
+          </form>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+            <span className="text-xs text-slate-400">or</span>
+            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+          </div>
+
+          <form action={signInWithGoogleAction}>
+            <button
+              type="submit"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-sm flex items-center justify-center gap-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.85 2.09-1.81 2.73v2.27h2.92c1.71-1.57 2.69-3.88 2.69-6.64z" />
+                <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.27c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.95v2.33C2.44 15.98 5.48 18 9 18z" />
+                <path fill="#FBBC05" d="M3.97 10.7c-.18-.54-.28-1.11-.28-1.7s.1-1.16.28-1.7V4.97H.95C.34 6.22 0 7.57 0 9s.34 2.78.95 4.03l3.02-2.33z" />
+                <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.95 4.97l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
+              </svg>
+              Continue with Google
             </button>
           </form>
 

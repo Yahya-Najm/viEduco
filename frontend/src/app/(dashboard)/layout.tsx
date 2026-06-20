@@ -36,7 +36,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/dashboard/upload" className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-lg font-semibold transition-colors">
               + Upload
             </Link>
-            <span className="text-sm text-slate-400">{session.user.name ?? session.user.email}</span>
+            <Link href="/dashboard/account" className="text-sm text-slate-400 hover:text-slate-700 font-medium transition-colors">
+              {session.user.name ?? session.user.email}
+            </Link>
             <LogoutButton />
           </nav>
         </div>

@@ -8,18 +8,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 35%, #4338ca 65%, #5b21b6 100%)",
         }}
       >
-        {/* Grid overlay */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: `
-              linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)
-            `,
-            backgroundSize: "40px 40px",
-          }}
-        />
-
         {/* Glow blobs */}
         <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-violet-600/30 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-indigo-400/20 rounded-full blur-3xl pointer-events-none" />

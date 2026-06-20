@@ -42,6 +42,10 @@ export async function registerAction(
   redirect("/login?registered=1")
 }
 
+export async function signInWithGoogleAction() {
+  await signIn("google", { redirectTo: "/dashboard" })
+}
+
 export async function loginAction(
   _prev: string | null,
   formData: FormData,

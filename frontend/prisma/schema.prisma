@@ -16,6 +16,8 @@ model User {
   emailVerified DateTime?
   image          String?
   hashedPassword String?
+  organization   String?
+  jobTitle       String?
   active         Boolean   @default(true)
   accounts       Account[]
   sessions      Session[]
