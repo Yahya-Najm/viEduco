@@ -67,7 +67,7 @@ export default function TranscriptPlayer({
       {sourceKey && (
         <div className="w-full rounded-xl overflow-hidden bg-black aspect-video">
           {src ? (
-            <video ref={videoRef} src={src} controls className="w-full h-full" />
+            <video ref={videoRef} src={src} controls crossOrigin="anonymous" className="w-full h-full" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <span className="w-5 h-5 rounded-full border-2 border-slate-500 border-t-slate-200 animate-spin" />
