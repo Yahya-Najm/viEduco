@@ -23,8 +23,8 @@ app = modal.App(APP_NAME)
     image=image,
     secrets=[modal.Secret.from_name(f"{APP_NAME}-secrets")],
     volumes={"/model-cache": model_cache},
-    gpu="any",
-    timeout=600,
+    gpu="L4",
+    timeout=1800,
     scaledown_window=300,
 )
 @modal.asgi_app()

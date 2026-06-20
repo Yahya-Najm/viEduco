@@ -19,6 +19,8 @@ model User {
   organization   String?
   jobTitle       String?
   active         Boolean   @default(true)
+  uploadLimitSeconds Int   @default(300)
+  uploadSecondsUsed  Int   @default(0)
   accounts       Account[]
   sessions      Session[]
   transcriptions Transcription[]

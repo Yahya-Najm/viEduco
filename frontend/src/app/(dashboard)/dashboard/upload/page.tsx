@@ -1,8 +1,11 @@
 import UploadForm from "@/components/UploadForm"
+import { getQuotaStatus } from "@/lib/actions/quota"
 
 export const metadata = { title: "Upload — viEduco" }
 
-export default function UploadPage() {
+export default async function UploadPage() {
+  const quota = await getQuotaStatus()
+
   return (
     <div className="max-w-lg">
       <div className="mb-8">
@@ -12,7 +15,7 @@ export default function UploadPage() {
         </p>
       </div>
       <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-        <UploadForm />
+        <UploadForm initialQuota={quota} />
       </div>
     </div>
   )

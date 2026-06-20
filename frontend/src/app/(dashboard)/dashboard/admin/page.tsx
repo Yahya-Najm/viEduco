@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth"
 import { getUsers } from "@/lib/actions/admin"
 import { isAdminEmail } from "@/lib/admin"
 import { UserToggle } from "@/components/UserToggle"
+import { GrantMinutesForm } from "@/components/GrantMinutesForm"
+import { formatMinutes } from "@/lib/quota"
 
 export const metadata = { title: "Admin — viEduco" }
 
@@ -27,6 +29,7 @@ export default async function AdminPage() {
               <th className="px-5 py-3 font-semibold text-slate-500 font-normal">Transcriptions</th>
               <th className="px-5 py-3 font-semibold text-slate-500 font-normal">Joined</th>
               <th className="px-5 py-3 font-semibold text-slate-500 font-normal">Status</th>
+              <th className="px-5 py-3 font-semibold text-slate-500 font-normal">Upload time</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -45,6 +48,18 @@ export default async function AdminPage() {
                     <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-100 text-indigo-700">You</span>
                   ) : (
                     <UserToggle userId={u.id} active={u.active} />
+                  )}
+                </td>
+                <td className="px-5 py-3.5">
+                  {isAdminEmail(u.email) ? (
+                    <span className="text-slate-400 text-xs">Unlimited</span>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-slate-500 text-xs">
+                        {formatMinutes(u.uploadSecondsUsed)} / {formatMinutes(u.uploadLimitSeconds)} used
+                      </p>
+                      <GrantMinutesForm userId={u.id} />
+                    </div>
                   )}
                 </td>
               </tr>

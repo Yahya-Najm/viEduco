@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation"
 import { FFmpeg } from "@ffmpeg/ffmpeg"
 import { fetchFile, toBlobURL } from "@ffmpeg/util"
 import { saveTranscription } from "@/lib/actions/transcription"
+import { checkUploadAllowed, type QuotaStatus } from "@/lib/actions/quota"
+import { formatMinutes } from "@/lib/quota"
+import LimitModal from "@/components/LimitModal"
 
 type Stage =
   | "idle"
@@ -29,10 +32,28 @@ const STAGE_LABEL: Record<Stage, string> = {
 
 const VIDEO_TYPES = ["video/mp4", "video/mkv", "video/avi", "video/mov", "video/webm"]
 
-export default function UploadForm() {
+function getMediaDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const el  = document.createElement("video")
+    const url = URL.createObjectURL(file)
+    el.preload = "metadata"
+    el.onloadedmetadata = () => {
+      URL.revokeObjectURL(url)
+      resolve(el.duration)
+    }
+    el.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error("Could not read file duration."))
+    }
+    el.src = url
+  })
+}
+
+export default function UploadForm({ initialQuota }: { initialQuota?: QuotaStatus | null }) {
   const [stage, setStage]   = useState<Stage>("idle")
   const [error, setError]   = useState<string | null>(null)
   const [title, setTitle]   = useState("")
+  const [limitReason, setLimitReason] = useState<"exceeds" | "exhausted" | null>(null)
   const ffmpegRef           = useRef<FFmpeg | null>(null)
   const router              = useRouter()
 
@@ -82,6 +103,14 @@ export default function UploadForm() {
     const fileTitle    = title || file.name.replace(/\.[^.]+$/, "")
 
     try {
+      // 0. Measure real duration and check it against the user's remaining upload time
+      const durationSeconds = await getMediaDuration(file)
+      const quotaCheck = await checkUploadAllowed(durationSeconds)
+      if (!quotaCheck.ok) {
+        setLimitReason(quotaCheck.reason)
+        return
+      }
+
       // 1. Convert video → mp3 client-side if needed
       let audioFile = file
       if (isVideo) {
@@ -103,7 +132,7 @@ export default function UploadForm() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail ?? "Transcription failed")
       }
-      const { segments, metadata } = await res.json()
+      const { segments } = await res.json()
 
       // 3. Upload original video to R2 (best-effort, non-blocking failure)
       let sourceKey: string | undefined
@@ -114,16 +143,22 @@ export default function UploadForm() {
 
       // 4. Save to DB
       setStage("saving")
-      const saved = await saveTranscription({
+      const result = await saveTranscription({
         title:      fileTitle,
         sourceType: isVideo ? "video" : "audio",
         sourceKey,
-        durationMs: metadata?.duration_ms,
+        durationMs: Math.round(durationSeconds * 1000),
         segments,
       })
 
+      if (!result.ok) {
+        setLimitReason(result.reason)
+        setStage("idle")
+        return
+      }
+
       setStage("done")
-      router.push(`/dashboard/transcriptions/${saved.id}`)
+      router.push(`/dashboard/transcriptions/${result.id}`)
 
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error")
@@ -135,6 +170,16 @@ export default function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {initialQuota && (
+        <p className="text-xs text-slate-500">
+          {initialQuota.unlimited
+            ? "Unlimited upload time (admin)"
+            : `${formatMinutes(initialQuota.remainingSeconds)} of upload time remaining`}
+        </p>
+      )}
+
+      {limitReason && <LimitModal reason={limitReason} onClose={() => setLimitReason(null)} />}
+
       <div className="flex flex-col gap-1.5">
         <label htmlFor="title" className="text-sm font-medium text-slate-700">
           Title <span className="text-slate-400 font-normal">(optional)</span>
