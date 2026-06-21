@@ -21,8 +21,8 @@ export default async function AdminPage() {
         <p className="text-sm text-slate-500 mt-1">{users.length} user{users.length !== 1 ? "s" : ""}</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl border border-slate-100 overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-left">
               <th className="px-5 py-3 font-semibold text-slate-500 font-normal">User</th>
