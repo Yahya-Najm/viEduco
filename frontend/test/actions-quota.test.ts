@@ -67,10 +67,18 @@ describe("getQuotaStatus", () => {
 })
 
 describe("checkUploadAllowed", () => {
-  it("allows any duration when there is no session (status is null)", async () => {
+  it("throws Unauthorized when there is no session (status is null)", async () => {
     asMock(auth).mockResolvedValue(null)
 
-    expect(await checkUploadAllowed(999_999)).toEqual({ ok: true })
+    await expect(checkUploadAllowed(999_999)).rejects.toThrow("Unauthorized")
+  })
+
+  it("throws Unauthorized when the user record is missing", async () => {
+    vi.stubEnv("ADMIN_EMAIL", "admin@example.com")
+    asMock(auth).mockResolvedValue(fakeSession({ email: "user@example.com" }))
+    asMock(prisma.user.findUnique).mockResolvedValue(null)
+
+    await expect(checkUploadAllowed(10)).rejects.toThrow("Unauthorized")
   })
 
   it("allows any duration for an unlimited (admin) user", async () => {

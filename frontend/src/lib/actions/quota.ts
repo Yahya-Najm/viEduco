@@ -39,7 +39,8 @@ export type QuotaCheckResult =
 
 export async function checkUploadAllowed(durationSeconds: number): Promise<QuotaCheckResult> {
   const status = await getQuotaStatus()
-  if (!status || status.unlimited) return { ok: true }
+  if (!status) throw new Error("Unauthorized")
+  if (status.unlimited) return { ok: true }
 
   if (status.remainingSeconds <= 0) {
     return { ok: false, reason: "exhausted", remainingSeconds: 0 }

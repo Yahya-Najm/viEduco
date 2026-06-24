@@ -42,9 +42,6 @@ describe("getLiveToken", () => {
 
   it("issues a valid HMAC token with a ~120s expiry and the default ws URL", async () => {
     vi.stubEnv("INTERNAL_API_KEY", "secret-key")
-    // `?? "http://localhost:8001"` only falls back on null/undefined, not "" —
-    // so the default branch must be exercised by truly deleting the var, not
-    // stubbing it to an empty string (that's a distinct, separately-tested case).
     delete process.env.LIVE_TRANSCRIBE_URL
     asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
     asMock(prisma.user.findUnique).mockResolvedValue({ active: true })
@@ -76,7 +73,7 @@ describe("getLiveToken", () => {
     expect(result!.wsUrl).toBe("wss://live.example.com/ws/transcribe")
   })
 
-  it("documents a sharp edge: LIVE_TRANSCRIBE_URL set to an empty string is NOT treated as unset (?? only catches null/undefined)", async () => {
+  it("falls back to the default URL when LIVE_TRANSCRIBE_URL is an empty string (fixed: || instead of ??)", async () => {
     vi.stubEnv("INTERNAL_API_KEY", "secret-key")
     vi.stubEnv("LIVE_TRANSCRIBE_URL", "")
     asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
@@ -84,7 +81,7 @@ describe("getLiveToken", () => {
 
     const result = await getLiveToken()
 
-    expect(result!.wsUrl).toBe("/ws/transcribe")
+    expect(result!.wsUrl).toBe("ws://localhost:8001/ws/transcribe")
   })
 
   it("uses an empty-string HMAC key when INTERNAL_API_KEY is unset", async () => {

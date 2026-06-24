@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
+import { createMockPrisma } from "./helpers/mockPrisma"
 import { fakeSession } from "./helpers/session"
 import { asMock } from "./helpers/asMock"
 
+vi.mock("@/lib/prisma", () => ({ prisma: createMockPrisma() }))
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }))
 
+const { prisma } = await import("@/lib/prisma")
 const { auth } = await import("@/lib/auth")
 const { GET } = await import("@/app/api/storage/presigned-download/route")
 
@@ -30,18 +33,27 @@ describe("GET /api/storage/presigned-download", () => {
     expect(res.status).toBe(401)
   })
 
-  it("does NOT check active status (unlike the other two routes) — a signed-in but suspended user still passes", async () => {
+  it("returns 403 when the user is inactive (now consistent with the other two storage routes)", async () => {
     asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
-    vi.stubEnv("API_URL", "http://backend")
-    asMock(fetch).mockResolvedValue(new Response(JSON.stringify({ url: "https://r2/get" }), { status: 200 }))
+    asMock(prisma.user.findUnique).mockResolvedValue({ active: false })
 
     const res = await GET(makeRequest("?key=videos/a.mp4"))
 
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(403)
+  })
+
+  it("returns 403 when the user record is missing", async () => {
+    asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
+    asMock(prisma.user.findUnique).mockResolvedValue(null)
+
+    const res = await GET(makeRequest("?key=videos/a.mp4"))
+
+    expect(res.status).toBe(403)
   })
 
   it("returns 400 when key is missing", async () => {
     asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
+    asMock(prisma.user.findUnique).mockResolvedValue({ active: true })
 
     const res = await GET(makeRequest(""))
 
@@ -51,6 +63,7 @@ describe("GET /api/storage/presigned-download", () => {
 
   it("returns 503 when API_URL is not configured", async () => {
     asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
+    asMock(prisma.user.findUnique).mockResolvedValue({ active: true })
     vi.stubEnv("API_URL", "")
 
     const res = await GET(makeRequest("?key=videos/a.mp4"))
@@ -60,6 +73,7 @@ describe("GET /api/storage/presigned-download", () => {
 
   it("forwards the key (url-encoded) and internal key header, relaying the upstream response", async () => {
     asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
+    asMock(prisma.user.findUnique).mockResolvedValue({ active: true })
     vi.stubEnv("API_URL", "http://backend")
     vi.stubEnv("INTERNAL_API_KEY", "secret")
     asMock(fetch).mockResolvedValue(
@@ -77,6 +91,7 @@ describe("GET /api/storage/presigned-download", () => {
 
   it("omits the internal-key header when INTERNAL_API_KEY is unset", async () => {
     asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
+    asMock(prisma.user.findUnique).mockResolvedValue({ active: true })
     vi.stubEnv("API_URL", "http://backend")
     vi.stubEnv("INTERNAL_API_KEY", "")
     asMock(fetch).mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }))
@@ -89,6 +104,7 @@ describe("GET /api/storage/presigned-download", () => {
 
   it("relays a non-2xx upstream status", async () => {
     asMock(auth).mockResolvedValue(fakeSession({ id: "u1" }))
+    asMock(prisma.user.findUnique).mockResolvedValue({ active: true })
     vi.stubEnv("API_URL", "http://backend")
     asMock(fetch).mockResolvedValue(new Response(JSON.stringify({ detail: "not found" }), { status: 404 }))
 

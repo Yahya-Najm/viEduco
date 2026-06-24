@@ -6,6 +6,7 @@ import tempfile
 from fastapi import APIRouter, HTTPException, UploadFile, File
 
 from pipeline.orchestrator import orchestrate
+from pipeline.protocol import generate_protocol
 from utils.storage import upload_file, public_url
 
 router = APIRouter()
@@ -27,6 +28,7 @@ async def build_protocol(file: UploadFile = File(...)):
 
     try:
         result = await orchestrate(tmp_path)
+        result["protocol"] = await asyncio.to_thread(generate_protocol, result["segments"])
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     finally:

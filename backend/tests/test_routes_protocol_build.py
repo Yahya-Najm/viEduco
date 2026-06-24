@@ -16,24 +16,9 @@ def disable_internal_key_check(monkeypatch):
 
 @pytest.fixture
 def client():
-    # NOTE: api/router.py never calls router.include_router(protocol_route.router),
-    # so /build_protocol is NOT reachable on the real `app` from main.py (confirmed
-    # below in test_build_protocol_route_is_not_registered_on_real_app -- it 404s).
-    # We mount the router directly on a throwaway app to exercise the route's own
-    # logic in isolation, since that logic is otherwise completely untested in prod.
     isolated_app = FastAPI()
     isolated_app.include_router(protocol_route.router)
     return TestClient(isolated_app)
-
-
-def test_build_protocol_route_is_not_registered_on_real_app():
-    real_client = TestClient(app)
-    response = real_client.post(
-        "/build_protocol",
-        headers={"x-internal-key": "anything"},
-        files={"file": ("meeting.wav", b"fake-bytes", "audio/wav")},
-    )
-    assert response.status_code == 404
 
 
 HEADERS = {"x-internal-key": "anything"}
@@ -55,8 +40,38 @@ def mocked_storage(monkeypatch):
     return calls
 
 
+@pytest.fixture
+def mocked_generate_protocol(monkeypatch):
+    calls = []
+
+    def fake_generate_protocol(transcript):
+        calls.append(transcript)
+        return {"participants": ["A"], "discussion": [{"speaker": "A", "summary": "hi"}], "decisions": []}
+
+    monkeypatch.setattr(protocol_route, "generate_protocol", fake_generate_protocol)
+    return calls
+
+
+def test_build_protocol_route_is_registered_on_the_real_app(monkeypatch, mocked_storage, mocked_generate_protocol):
+    async def fake_orchestrate(path):
+        return {"segments": [], "metadata": {"duration_ms": 0}}
+
+    monkeypatch.setattr(protocol_route, "orchestrate", fake_orchestrate)
+
+    real_client = TestClient(app)
+    response = real_client.post(
+        "/build_protocol",
+        headers={"x-internal-key": "anything"},
+        files={"file": ("meeting.wav", b"fake-bytes", "audio/wav")},
+    )
+
+    assert response.status_code == 200
+
+
 class TestBuildProtocolRoute:
-    def test_happy_path_includes_storage_urls(self, client, monkeypatch, mocked_storage):
+    def test_happy_path_includes_storage_urls_and_generated_protocol(
+        self, client, monkeypatch, mocked_storage, mocked_generate_protocol
+    ):
         async def fake_orchestrate(path):
             return {"segments": [{"speaker": "A", "start_time": 0.0, "end_time": 1.0, "text": "hi"}], "metadata": {"duration_ms": 5}}
 
@@ -71,10 +86,31 @@ class TestBuildProtocolRoute:
         assert response.status_code == 200
         body = response.json()
         assert body["segments"] == [{"speaker": "A", "start_time": 0.0, "end_time": 1.0, "text": "hi"}]
+        assert body["protocol"] == {
+            "participants": ["A"],
+            "discussion": [{"speaker": "A", "summary": "hi"}],
+            "decisions": [],
+        }
         assert body["storage"]["source_url"] == "https://cdn.example.com/uploads/meeting.wav"
         assert body["storage"]["result_url"] == "https://cdn.example.com/protocols/result.json"
 
-    def test_uploads_source_then_result_with_expected_folders(self, client, monkeypatch, mocked_storage):
+    def test_generate_protocol_called_with_merged_segments(self, client, monkeypatch, mocked_storage, mocked_generate_protocol):
+        segments = [{"speaker": "B", "start_time": 0.0, "end_time": 2.0, "text": "hello there"}]
+
+        async def fake_orchestrate(path):
+            return {"segments": segments, "metadata": {"duration_ms": 10}}
+
+        monkeypatch.setattr(protocol_route, "orchestrate", fake_orchestrate)
+
+        client.post(
+            "/build_protocol",
+            headers=HEADERS,
+            files={"file": ("meeting.wav", b"fake-bytes", "audio/wav")},
+        )
+
+        assert mocked_generate_protocol == [segments]
+
+    def test_uploads_source_then_result_with_expected_folders(self, client, monkeypatch, mocked_storage, mocked_generate_protocol):
         async def fake_orchestrate(path):
             return {"segments": [], "metadata": {"duration_ms": 0}}
 
@@ -93,7 +129,7 @@ class TestBuildProtocolRoute:
         assert mocked_storage[1]["filename"] == "result.json"
         assert mocked_storage[1]["content_type"] == "application/json"
 
-    def test_source_upload_happens_even_if_orchestrate_later_fails(self, client, monkeypatch, mocked_storage):
+    def test_source_upload_happens_even_if_orchestrate_later_fails(self, client, monkeypatch, mocked_storage, mocked_generate_protocol):
         async def fake_orchestrate(path):
             raise ValueError("File is empty.")
 
@@ -109,8 +145,9 @@ class TestBuildProtocolRoute:
         # The source file was already uploaded to R2 before orchestrate ran and failed.
         assert len(mocked_storage) == 1
         assert mocked_storage[0]["folder"] == "uploads"
+        assert mocked_generate_protocol == []
 
-    def test_value_error_returns_422_with_detail(self, client, monkeypatch, mocked_storage):
+    def test_value_error_returns_422_with_detail(self, client, monkeypatch, mocked_storage, mocked_generate_protocol):
         async def fake_orchestrate(path):
             raise ValueError("Unsupported file type '.xyz'.")
 
@@ -125,7 +162,30 @@ class TestBuildProtocolRoute:
         assert response.status_code == 422
         assert response.json()["detail"] == "Unsupported file type '.xyz'."
 
-    def test_temp_file_cleaned_up_on_success(self, client, monkeypatch, mocked_storage):
+    def test_generate_protocol_value_error_also_returns_422(self, client, monkeypatch, mocked_storage):
+        """A malformed-JSON ValueError from generate_protocol (e.g. json.JSONDecodeError,
+        which subclasses ValueError) is caught by the same except block as orchestrate's
+        validation errors, since the call happens inside the same try block."""
+        async def fake_orchestrate(path):
+            return {"segments": [], "metadata": {"duration_ms": 0}}
+
+        def failing_generate_protocol(transcript):
+            raise ValueError("Expecting value: line 1 column 1 (char 0)")
+
+        monkeypatch.setattr(protocol_route, "orchestrate", fake_orchestrate)
+        monkeypatch.setattr(protocol_route, "generate_protocol", failing_generate_protocol)
+
+        response = client.post(
+            "/build_protocol",
+            headers=HEADERS,
+            files={"file": ("meeting.wav", b"fake-bytes", "audio/wav")},
+        )
+
+        assert response.status_code == 422
+        # The source file is still uploaded before the failure (uploaded before orchestrate).
+        assert len(mocked_storage) == 1
+
+    def test_temp_file_cleaned_up_on_success(self, client, monkeypatch, mocked_storage, mocked_generate_protocol):
         captured_path = {}
 
         async def fake_orchestrate(path):
@@ -163,24 +223,3 @@ class TestBuildProtocolRoute:
     def test_missing_file_returns_422(self, client):
         response = client.post("/build_protocol", headers=HEADERS)
         assert response.status_code == 422
-
-    def test_endpoint_does_not_call_llm_protocol_generation(self, client, monkeypatch, mocked_storage):
-        """Documents current behavior: /build_protocol returns raw merged segments,
-        it never calls pipeline.protocol.generate_protocol to produce an LLM-summarized
-        protocol (participants/discussion/decisions), despite the route name."""
-        async def fake_orchestrate(path):
-            return {"segments": [{"speaker": "A", "start_time": 0.0, "end_time": 1.0, "text": "hi"}], "metadata": {"duration_ms": 0}}
-
-        monkeypatch.setattr(protocol_route, "orchestrate", fake_orchestrate)
-
-        response = client.post(
-            "/build_protocol",
-            headers=HEADERS,
-            files={"file": ("meeting.wav", b"fake-bytes", "audio/wav")},
-        )
-
-        body = response.json()
-        assert "participants" not in body
-        assert "discussion" not in body
-        assert "decisions" not in body
-        assert "segments" in body

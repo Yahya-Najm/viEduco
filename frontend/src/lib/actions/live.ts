@@ -12,7 +12,7 @@ export async function getLiveToken(): Promise<{ wsUrl: string; token: string } |
   if (!user?.active) return null
 
   const key = process.env.INTERNAL_API_KEY ?? ""
-  const liveUrl = (process.env.LIVE_TRANSCRIBE_URL ?? "http://localhost:8001").replace(/\/$/, "")
+  const liveUrl = (process.env.LIVE_TRANSCRIBE_URL || "http://localhost:8001").replace(/\/$/, "")
   const wsUrl = liveUrl.replace(/^http/, "ws") + "/ws/transcribe"
 
   const expiry = Math.floor(Date.now() / 1000) + 120
